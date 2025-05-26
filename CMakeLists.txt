@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(music_player C)
+project(rhythm C)
 
 # Set C standard
 set(CMAKE_C_STANDARD 11)
@@ -23,14 +23,14 @@ file(GLOB_RECURSE SOURCES
 )
 
 # Create executable
-add_executable(music_player ${SOURCES})
+add_executable(rhythm ${SOURCES})
 
 # Link libraries
-target_link_libraries(music_player
+target_link_libraries(rhythm
     ${PORTAUDIO_LIBRARIES}
     ${MPG123_LIBRARIES}
     m
 )
 
 # Install target
-install(TARGETS music_player DESTINATION bin) 
+install(TARGETS rhythm DESTINATION bin) 
