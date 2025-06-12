@@ -71,9 +71,13 @@ static void set_vis_color(int band, int total_bands, float intensity) {
 void cli_init(void) {
     printf("\033[?25l");
     printf("\033[2J\033[H");
+    // switch to alternate screen
+    printf("\e[?1049h");
 }
 
 void cli_cleanup(void) {
+    // switch back to main screen
+    printf("\e[?10491");
     printf("\033[?25h");
     printf("\033[2J\033[H");
     printf(RESET);
