@@ -9,16 +9,18 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 pkg_check_modules(MPG123 REQUIRED libmpg123)
+pkg_check_modules(JACK REQUIRED jack)
 
 # Include directories
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
     ${PORTAUDIO_INCLUDE_DIRS}
     ${MPG123_INCLUDE_DIRS}
+    ${JACK_INCLUDE_DIRS}
 )
 
 # Add source files
-file(GLOB_RECURSE SOURCES 
+file(GLOB_RECURSE SOURCES
     "src/*.c"
 )
 
@@ -29,8 +31,9 @@ add_executable(rhythm ${SOURCES})
 target_link_libraries(rhythm
     ${PORTAUDIO_LIBRARIES}
     ${MPG123_LIBRARIES}
+    ${JACK_LIBRARIES}
     m
 )
 
 # Install target
-install(TARGETS rhythm DESTINATION bin) 
+install(TARGETS rhythm DESTINATION bin)

@@ -41,6 +41,7 @@ else
         -Iinclude \
         $(pkg-config --cflags --libs portaudio-2.0) \
         $(pkg-config --cflags --libs libmpg123) \
+        $(pkg-config --cflags --libs jack) \
         -lm
 fi
 
