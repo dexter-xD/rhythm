@@ -47,4 +47,4 @@ fi
 
 echo "✅ Build complete!"
 echo "🎶 Run with: ./rhythm your_music.mp3"
-echo "📁 Or play a folder: ./rhythm /path/to/music/folder" 
+echo "📁 Or play a folder: ./rhythm /path/to/music/folder"
