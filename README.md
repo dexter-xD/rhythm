@@ -37,7 +37,113 @@
 - **Memory**: ~100MB RAM usage
 - **Disk**: ~20MB installation size
 
-## 🚀 Quick Start
+## � QInstallation
+
+### Pre-built Debian Packages (Recommended)
+
+We provide ready-to-install Debian packages for Ubuntu, Debian, and other Debian-based distributions. Choose the package that best fits your needs:
+
+#### Package Options
+
+**🎵 `rhythm-2.0.0-debian-amd64.deb` - Complete Edition (Recommended)**
+- Includes both GUI and terminal interfaces
+- Full feature set with visualizations
+- Best choice for desktop users
+- Size: ~2.4MB
+
+**🖥️ `rhythm-gui-2.0.0-debian-amd64.deb` - GUI Only**
+- Graphical interface with visualizations
+- Perfect for desktop environments
+- Requires LÖVE2D
+- Size: ~2.4MB
+
+**⌨️ `rhythm-tui-2.0.0-debian-amd64.deb` - Terminal Only**
+- Lightweight terminal interface
+- Ideal for servers and minimal systems
+- No GUI dependencies required
+- Size: ~20KB
+
+#### Installation Steps
+
+1. **Download the package** that matches your preference from the [Releases](https://github.com/your-username/rhythm/releases) page
+
+2. **Install the package:**
+   ```bash
+   # For the complete edition (recommended)
+   sudo dpkg -i rhythm-2.0.0-debian-amd64.deb
+   
+   # For GUI-only version
+   sudo dpkg -i rhythm-gui-2.0.0-debian-amd64.deb
+   
+   # For terminal-only version
+   sudo dpkg -i rhythm-tui-2.0.0-debian-amd64.deb
+   ```
+
+3. **Install dependencies** (if any are missing):
+   ```bash
+   sudo apt-get install -f
+   ```
+
+4. **Launch Rhythm:**
+   ```bash
+   # Complete or GUI version
+   rhythm                    # Launches GUI
+   rhythm-cli               # Launches terminal interface (complete edition only)
+   
+   # Terminal-only version
+   rhythm                   # Launches terminal interface
+   ```
+
+#### System Requirements for Packages
+
+**All Packages:**
+- Ubuntu 18.04+ / Debian 10+ / Linux Mint 19+
+- x86_64 architecture
+- PortAudio and mpg123 libraries (auto-installed)
+
+**GUI Packages Additional Requirements:**
+- LÖVE2D 11.0+ (auto-installed)
+- Desktop environment (GNOME, KDE, XFCE, etc.)
+- Graphics drivers with OpenGL support
+
+#### Verifying Installation
+
+After installation, verify that Rhythm is working correctly:
+
+```bash
+# Check if the command is available
+which rhythm
+
+# Test with version info
+rhythm --version
+
+# For complete edition, test both interfaces
+rhythm --help              # GUI version help
+rhythm-cli --help          # Terminal version help (complete edition only)
+```
+
+**Desktop Integration:**
+- The GUI version will appear in your application menu under "Sound & Video"
+- Look for "Rhythm Music Player" with the Rhythm logo
+- You can also launch it from the command line with `rhythm`
+
+#### Uninstallation
+
+```bash
+# Remove the installed package
+sudo dpkg -r rhythm        # Complete edition
+sudo dpkg -r rhythm-gui    # GUI-only edition  
+sudo dpkg -r rhythm-tui    # Terminal-only edition
+
+# Remove configuration files (optional)
+sudo dpkg --purge rhythm
+```
+
+### Alternative Installation Methods
+
+If the pre-built packages don't work for your system, you can build from source:
+
+## 🚀 Build from Source
 
 ### What is LÖVE2D?
 
@@ -84,7 +190,7 @@ chmod +x love-11.4-x86_64.AppImage
 sudo mv love-11.4-x86_64.AppImage /usr/local/bin/love
 ```
 
-### Build from Source
+### Prerequisites for Building
 
 ```bash
 # Clone the repository

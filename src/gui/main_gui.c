@@ -69,8 +69,15 @@ static int launch_love2d(const char* music_path) {
         *last_slash = '\0';
     }
 
-    snprintf(gui_path, sizeof(gui_path), "%s/../gui", exe_path);
-    snprintf(engine_lib_path, sizeof(engine_lib_path), "%s/librhythm_engine.so", exe_path);
+    const char* installed_gui_path = "/usr/share/rhythm/gui";
+    if (file_exists(installed_gui_path)) {
+        snprintf(gui_path, sizeof(gui_path), "%s", installed_gui_path);
+        snprintf(engine_lib_path, sizeof(engine_lib_path), "/usr/lib/librhythm_engine.so");
+    } else {
+
+        snprintf(gui_path, sizeof(gui_path), "%s/../gui", exe_path);
+        snprintf(engine_lib_path, sizeof(engine_lib_path), "%s/librhythm_engine.so", exe_path);
+    }
 
     if (music_path) {
         snprintf(music_arg, sizeof(music_arg), "RHYTHM_MUSIC_PATH=%s", music_path);
@@ -78,6 +85,7 @@ static int launch_love2d(const char* music_path) {
 
     if (!file_exists(gui_path)) {
         fprintf(stderr, "Error: GUI directory not found at %s\n", gui_path);
+        fprintf(stderr, "Also tried: %s\n", installed_gui_path);
         return -1;
     }
 
@@ -97,10 +105,12 @@ static int launch_love2d(const char* music_path) {
 
         char ld_path[2048];
         const char* current_ld_path = getenv("LD_LIBRARY_PATH");
+        const char* lib_dir = strstr(engine_lib_path, "/usr/lib/") ? "/usr/lib" : exe_path;
+
         if (current_ld_path) {
-            snprintf(ld_path, sizeof(ld_path), "LD_LIBRARY_PATH=%s:%s", exe_path, current_ld_path);
+            snprintf(ld_path, sizeof(ld_path), "LD_LIBRARY_PATH=%s:%s", lib_dir, current_ld_path);
         } else {
-            snprintf(ld_path, sizeof(ld_path), "LD_LIBRARY_PATH=%s", exe_path);
+            snprintf(ld_path, sizeof(ld_path), "LD_LIBRARY_PATH=%s", lib_dir);
         }
 
         if (putenv(ld_path) != 0) {

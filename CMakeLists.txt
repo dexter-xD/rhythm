@@ -136,7 +136,9 @@ if(BUILD_GUI OR BUILD_COMBINED)
         DESTINATION share/rhythm/gui
         FILES_MATCHING 
         PATTERN "*.lua"
-        PATTERN "assets/*"
+        PATTERN "*.png"
+        PATTERN "*.ttf"
+        PATTERN "*.otf"
     )
 endif()
 
@@ -159,4 +161,7 @@ target_link_libraries(test_rhythm_engine
 )
 
 # Add test
-add_test(NAME rhythm_engine_tests COMMAND test_rhythm_engine) 
+add_test(NAME rhythm_engine_tests COMMAND test_rhythm_engine)
+
+# Include packaging configuration
+include(build/packaging/CMakePackaging.cmake)
