@@ -93,26 +93,28 @@ if(BUILD_CLI OR BUILD_COMBINED)
         rhythm_engine
         ${CURSES_LIBRARIES}
     )
-    
-    # Set CLI executable properties
-    if(BUILD_COMBINED)
-        set_target_properties(rhythm-cli PROPERTIES OUTPUT_NAME rhythm-cli)
-    elseif(BUILD_CLI AND NOT BUILD_GUI)
-        set_target_properties(rhythm-cli PROPERTIES OUTPUT_NAME rhythm)
-    endif()
 endif()
 
 # Build GUI executable
 if(BUILD_GUI OR BUILD_COMBINED)
     add_executable(rhythm-gui ${GUI_SOURCES})
     target_link_libraries(rhythm-gui rhythm_engine)
-    
-    # Set GUI executable properties
-    if(BUILD_COMBINED)
-        set_target_properties(rhythm-gui PROPERTIES OUTPUT_NAME rhythm)
-    elseif(BUILD_GUI AND NOT BUILD_CLI)
-        set_target_properties(rhythm-gui PROPERTIES OUTPUT_NAME rhythm)
-    endif()
+endif()
+
+# Configure executable naming based on build type
+if(BUILD_COMBINED)
+    # GUI+TUI package: 'rhythm' (GUI) and 'rhythm-cli' (CLI)
+    set_target_properties(rhythm-gui PROPERTIES OUTPUT_NAME rhythm)
+    set_target_properties(rhythm-cli PROPERTIES OUTPUT_NAME rhythm-cli)
+    message(STATUS "Executable naming: rhythm (GUI), rhythm-cli (CLI)")
+elseif(BUILD_GUI AND NOT BUILD_CLI)
+    # GUI-only package: 'rhythm' (GUI)
+    set_target_properties(rhythm-gui PROPERTIES OUTPUT_NAME rhythm)
+    message(STATUS "Executable naming: rhythm (GUI)")
+elseif(BUILD_CLI AND NOT BUILD_GUI)
+    # TUI-only package: 'rhythm' (CLI)
+    set_target_properties(rhythm-cli PROPERTIES OUTPUT_NAME rhythm)
+    message(STATUS "Executable naming: rhythm (CLI)")
 endif()
 
 # Install targets
@@ -121,6 +123,7 @@ install(TARGETS rhythm_engine
     PUBLIC_HEADER DESTINATION include/rhythm
 )
 
+# Install executables (using their renamed outputs)
 if(BUILD_CLI OR BUILD_COMBINED)
     install(TARGETS rhythm-cli DESTINATION bin)
 endif()
