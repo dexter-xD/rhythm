@@ -119,7 +119,7 @@ rhythm --version
 
 # For complete edition, test both interfaces
 rhythm --help              # GUI version help
-rhythm-cli --help          # Terminal version help (complete edition only)
+rhythm-cli --help          # Terminal version help (only for complete edition)
 ```
 
 **Desktop Integration:**
