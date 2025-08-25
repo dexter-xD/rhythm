@@ -127,21 +127,72 @@ function GameState:init()
         self.engine = engine
         print("Engine bridge initialized successfully")
 
-        local possible_paths = {"./mp3-files/", "../mp3-files/", "mp3-files/"}
+        local music_path = os.getenv("RHYTHM_MUSIC_PATH")
         local loaded = false
 
-        for _, path in ipairs(possible_paths) do
-            local ok, err = self.engine:load_directory(path)
-            if ok then
-                print("Loaded music directory:", path)
-                loaded = true
-                break
+        if music_path then
+            print("Loading music from launcher:", music_path)
+
+            local file = io.open(music_path, "r")
+            if file then
+                file:close()
+
+                local ok, err = self.engine:load_file(music_path)
+                if ok then
+                    print("Loaded music file:", music_path)
+                    loaded = true
+                else
+
+                    ok, err = self.engine:load_directory(music_path)
+                    if ok then
+                        print("Loaded music directory:", music_path)
+                        loaded = true
+                    else
+                        print("Failed to load music path:", music_path, "Error:", err)
+                    end
+                end
+            else
+
+                local ok, err = self.engine:load_directory(music_path)
+                if ok then
+                    print("Loaded music directory:", music_path)
+                    loaded = true
+                else
+                    print("Failed to load music path:", music_path, "Error:", err)
+                end
             end
         end
 
         if not loaded then
-            print("Could not find music directory. Tried: ./mp3-files/, ../mp3-files/, mp3-files/")
-            print("GUI will run without music files loaded")
+
+            local home_dir = os.getenv("HOME") or "/home/" .. (os.getenv("USER") or "user")
+            local possible_paths = {
+                home_dir .. "/Music/",           
+                home_dir .. "/music/",           
+                "/usr/share/sounds/",            
+                "/home/music/",                  
+                "./mp3-files/",                  
+                "../mp3-files/",                 
+                "mp3-files/"                     
+            }
+
+            for _, path in ipairs(possible_paths) do
+                local ok, err = self.engine:load_directory(path)
+                if ok then
+                    print("Loaded music directory:", path)
+                    loaded = true
+                    break
+                end
+            end
+
+            if not loaded then
+                print("Could not find music directory. Tried:")
+                for _, path in ipairs(possible_paths) do
+                    print("  - " .. path)
+                end
+                print("GUI will run without music files loaded")
+                print("Tip: Use the GUI launcher with a music path: ./rhythm_gui /path/to/music")
+            end
         end
     else
         print("Warning: Could not initialize engine bridge:", engine)
@@ -614,7 +665,8 @@ function GameState:_drawCircularArea(center_x, center_y, radius)
 
         local mid_glow_alpha = glow_alpha * 0.3 + (harmonic.second or 0) * 0.25
         if is_playing and audio_energy > 0.2 then
-            love.graphics.setColor(glow_color.r * 0.8, glow_color.g * 1.2, glow_color.b * 1.0, mid_glow_alpha)
+
+            love.graphics.setColor(glow_color.r * 0.9, glow_color.g * 0.8, glow_color.b * 1.1, mid_glow_alpha)
             love.graphics.draw(self.floating_image, draw_x - 3, draw_y - 3, 0, scale_factor * 1.08, scale_factor * 1.08)
         end
 
@@ -626,10 +678,6 @@ function GameState:_drawCircularArea(center_x, center_y, radius)
 
         if triggers.bass_trigger then
             self:_drawBassParticles(0, 0, radius, glow_color)
-        end
-
-        if triggers.mid_trigger then
-            self:_drawMidFrequencyRings(0, 0, radius * 0.6, glow_color)
         end
 
         if triggers.high_trigger then
@@ -1520,7 +1568,6 @@ function GameState:_handleStateChanges(previous_state, current_state, status)
         if current_state == "playing" then
             self.app_state.just_auto_advanced = false
 
-            self:_triggerVisualFeedback("play")
         elseif current_state == "paused" then
 
             self:_triggerVisualFeedback("pause")
@@ -1635,7 +1682,7 @@ function GameState:_triggerVisualFeedback(feedback_type)
     end
 
     local feedback_config = {
-        play = { color = {0.2, 0.8, 0.2, 1.0}, intensity = 0.8, duration = 0.5 },
+        play = { color = {0.0, 0.0, 0.0, 0.0}, intensity = 0.0, duration = 0.0 },
         pause = { color = {0.8, 0.6, 0.2, 1.0}, intensity = 0.6, duration = 0.3 },
         stop = { color = {0.8, 0.2, 0.2, 1.0}, intensity = 0.7, duration = 0.4 },
         next = { color = {0.2, 0.6, 0.8, 1.0}, intensity = 0.5, duration = 0.3 },
