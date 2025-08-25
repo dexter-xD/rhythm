@@ -5,16 +5,39 @@ project(rhythm C)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Build options (prepared for future multi-target support)
+# Build options for multi-target support
 option(BUILD_GUI "Build GUI version" OFF)
 option(BUILD_CLI "Build CLI version" ON)
 option(BUILD_COMBINED "Build combined GUI+CLI version" OFF)
+
+# Validate build options
+if(BUILD_COMBINED)
+    set(BUILD_GUI ON)
+    set(BUILD_CLI ON)
+    message(STATUS "Building combined GUI+CLI version")
+elseif(BUILD_GUI AND BUILD_CLI)
+    message(WARNING "Both BUILD_GUI and BUILD_CLI are ON. Consider using BUILD_COMBINED instead.")
+elseif(NOT BUILD_GUI AND NOT BUILD_CLI AND NOT BUILD_COMBINED)
+    message(FATAL_ERROR "At least one of BUILD_GUI, BUILD_CLI, or BUILD_COMBINED must be enabled")
+endif()
+
+if(BUILD_GUI)
+    message(STATUS "GUI version will be built")
+endif()
+if(BUILD_CLI)
+    message(STATUS "CLI version will be built")
+endif()
 
 # Find required packages
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
 pkg_check_modules(MPG123 REQUIRED libmpg123)
 pkg_check_modules(JACK REQUIRED jack)
+
+# Additional dependencies for CLI
+if(BUILD_CLI OR BUILD_COMBINED)
+    find_package(Curses REQUIRED)
+endif()
 
 # Include directories
 include_directories(
@@ -23,6 +46,10 @@ include_directories(
     ${MPG123_INCLUDE_DIRS}
     ${JACK_INCLUDE_DIRS}
 )
+
+if(BUILD_CLI OR BUILD_COMBINED)
+    include_directories(${CURSES_INCLUDE_DIRS})
+endif()
 
 # Core library sources
 set(CORE_SOURCES
@@ -38,7 +65,12 @@ set(CLI_SOURCES
     src/cli/cli.c
 )
 
-# Create shared library for engine (needed for GUI bridge)
+# GUI sources
+set(GUI_SOURCES
+    src/gui/main_gui.c
+)
+
+# Create shared library for engine (needed for both CLI and GUI)
 add_library(rhythm_engine SHARED ${CORE_SOURCES})
 target_link_libraries(rhythm_engine
     ${PORTAUDIO_LIBRARIES}
@@ -47,14 +79,63 @@ target_link_libraries(rhythm_engine
     m
 )
 
-# For now, build CLI version (will be extended in future tasks)
-add_executable(rhythm ${CLI_SOURCES})
+# Set library properties
+set_target_properties(rhythm_engine PROPERTIES
+    VERSION 1.0.0
+    SOVERSION 1
+    PUBLIC_HEADER "include/core/rhythm_engine.h"
+)
 
-# Link CLI executable to shared library
-target_link_libraries(rhythm rhythm_engine)
+# Build CLI executable
+if(BUILD_CLI OR BUILD_COMBINED)
+    add_executable(rhythm-cli ${CLI_SOURCES})
+    target_link_libraries(rhythm-cli 
+        rhythm_engine
+        ${CURSES_LIBRARIES}
+    )
+    
+    # Set CLI executable properties
+    if(BUILD_COMBINED)
+        set_target_properties(rhythm-cli PROPERTIES OUTPUT_NAME rhythm-cli)
+    elseif(BUILD_CLI AND NOT BUILD_GUI)
+        set_target_properties(rhythm-cli PROPERTIES OUTPUT_NAME rhythm)
+    endif()
+endif()
 
-# Install target
-install(TARGETS rhythm DESTINATION bin)
+# Build GUI executable
+if(BUILD_GUI OR BUILD_COMBINED)
+    add_executable(rhythm-gui ${GUI_SOURCES})
+    target_link_libraries(rhythm-gui rhythm_engine)
+    
+    # Set GUI executable properties
+    if(BUILD_COMBINED)
+        set_target_properties(rhythm-gui PROPERTIES OUTPUT_NAME rhythm)
+    elseif(BUILD_GUI AND NOT BUILD_CLI)
+        set_target_properties(rhythm-gui PROPERTIES OUTPUT_NAME rhythm)
+    endif()
+endif()
+
+# Install targets
+install(TARGETS rhythm_engine
+    LIBRARY DESTINATION lib
+    PUBLIC_HEADER DESTINATION include/rhythm
+)
+
+if(BUILD_CLI OR BUILD_COMBINED)
+    install(TARGETS rhythm-cli DESTINATION bin)
+endif()
+
+if(BUILD_GUI OR BUILD_COMBINED)
+    install(TARGETS rhythm-gui DESTINATION bin)
+    
+    # Install Love2D GUI files
+    install(DIRECTORY gui/
+        DESTINATION share/rhythm/gui
+        FILES_MATCHING 
+        PATTERN "*.lua"
+        PATTERN "assets/*"
+    )
+endif()
 
 # Enable testing
 enable_testing()

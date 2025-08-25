@@ -62,12 +62,12 @@ static int pa_callback(const void *inputBuffer, void *outputBuffer,
             consecutive_errors++;
 
             if (err == MPG123_NEED_MORE) {
-                // Need more input data, fill with silence and continue
+
                 memset(in_buffer + samples_read, 0, (in_total - samples_read) * sizeof(float));
                 samples_read = in_total;
                 break;
             } else if (err == MPG123_NEW_FORMAT) {
-                // Format changed, continue processing
+
                 continue;
             } else {
 
@@ -300,10 +300,32 @@ int audio_player_play(AudioPlayer *player, const char *filename) {
         return -1;
     }
 
+    mpg123_scan(player->mh);
+
+    size_t buffer_size = 1024;
+    unsigned char *buffer = malloc(buffer_size);
+    if (!buffer) {
+        fprintf(stderr, "Failed to allocate buffer for format detection\n");
+        mpg123_close(player->mh);
+        return -1;
+    }
+
+    size_t done = 0;
+    int read_err = mpg123_read(player->mh, buffer, buffer_size, &done);
+    free(buffer);
+
+    mpg123_seek(player->mh, 0, SEEK_SET);
+
+    if (read_err != MPG123_OK && read_err != MPG123_DONE && read_err != MPG123_NEW_FORMAT) {
+        fprintf(stderr, "Failed to read initial data: %s (code %d)\n", mpg123_strerror(player->mh), read_err);
+        mpg123_close(player->mh);
+        return -1;
+    }
+
     int channels, encoding;
     long rate;
     if (mpg123_getformat(player->mh, &rate, &channels, &encoding) != MPG123_OK) {
-        fprintf(stderr, "Failed to get format: %s\n", mpg123_strerror(player->mh));
+        fprintf(stderr, "Failed to get format: %s (code %d)\n", mpg123_strerror(player->mh), mpg123_errcode(player->mh));
         mpg123_close(player->mh);
         return -1;
     }

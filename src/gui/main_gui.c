@@ -29,15 +29,17 @@ static void cleanup_handler(int sig) {
 }
 
 static void print_usage(const char* program_name) {
-    printf("Usage: %s [OPTIONS] <file_or_directory>\n", program_name);
+    printf("Usage: %s [OPTIONS] [file_or_directory]\n", program_name);
     printf("\nOptions:\n");
     printf("  -h, --help     Show this help message\n");
     printf("  -v, --version  Show version information\n");
     printf("\nArguments:\n");
-    printf("  file_or_directory  MP3 file or directory containing MP3 files\n");
+    printf("  file_or_directory  Optional MP3 file or directory containing MP3 files\n");
+    printf("                     If not provided, GUI will launch with drag-and-drop support\n");
     printf("\nExamples:\n");
-    printf("  %s song.mp3\n", program_name);
-    printf("  %s /path/to/music/directory\n", program_name);
+    printf("  %s                    # Launch with drag-and-drop support\n", program_name);
+    printf("  %s song.mp3           # Launch with specific file\n", program_name);
+    printf("  %s /path/to/music/    # Launch with directory\n", program_name);
 }
 
 static bool file_exists(const char* path) {
@@ -69,7 +71,10 @@ static int launch_love2d(const char* music_path) {
 
     snprintf(gui_path, sizeof(gui_path), "%s/../gui", exe_path);
     snprintf(engine_lib_path, sizeof(engine_lib_path), "%s/librhythm_engine.so", exe_path);
-    snprintf(music_arg, sizeof(music_arg), "RHYTHM_MUSIC_PATH=%s", music_path);
+
+    if (music_path) {
+        snprintf(music_arg, sizeof(music_arg), "RHYTHM_MUSIC_PATH=%s", music_path);
+    }
 
     if (!file_exists(gui_path)) {
         fprintf(stderr, "Error: GUI directory not found at %s\n", gui_path);
@@ -85,7 +90,7 @@ static int launch_love2d(const char* music_path) {
 
     if (love2d_pid == 0) {
 
-        if (putenv(music_arg) != 0) {
+        if (music_path && putenv(music_arg) != 0) {
             perror("Error: Failed to set environment variable");
             exit(1);
         }
@@ -153,13 +158,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (music_path == NULL) {
-        fprintf(stderr, "Error: No music file or directory specified\n");
-        print_usage(argv[0]);
-        return 1;
-    }
-
-    if (!file_exists(music_path)) {
+    if (music_path && !file_exists(music_path)) {
         fprintf(stderr, "Error: File or directory '%s' does not exist or is not readable\n", music_path);
         return 1;
     }
@@ -174,20 +173,24 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    RhythmError error;
-    if (is_directory(music_path)) {
-        printf("Loading directory: %s\n", music_path);
-        error = rhythm_engine_load_directory(global_engine, music_path);
-    } else {
-        printf("Loading file: %s\n", music_path);
-        error = rhythm_engine_load_file(global_engine, music_path);
-    }
+    if (music_path) {
+        RhythmError error;
+        if (is_directory(music_path)) {
+            printf("Loading directory: %s\n", music_path);
+            error = rhythm_engine_load_directory(global_engine, music_path);
+        } else {
+            printf("Loading file: %s\n", music_path);
+            error = rhythm_engine_load_file(global_engine, music_path);
+        }
 
-    if (error != RHYTHM_OK) {
-        fprintf(stderr, "Error: Failed to load music: %s\n", 
-                rhythm_engine_error_string(error));
-        rhythm_engine_destroy(global_engine);
-        return 1;
+        if (error != RHYTHM_OK) {
+            fprintf(stderr, "Error: Failed to load music: %s\n", 
+                    rhythm_engine_error_string(error));
+            rhythm_engine_destroy(global_engine);
+            return 1;
+        }
+    } else {
+        printf("Starting GUI with drag-and-drop support...\n");
     }
 
     printf("Launching GUI...\n");

@@ -133,32 +133,31 @@ function GameState:init()
         if music_path then
             print("Loading music from launcher:", music_path)
 
-            local file = io.open(music_path, "r")
-            if file then
-                file:close()
+            local is_directory = false
+            local handle = io.popen('test -d "' .. music_path .. '" && echo "directory" || echo "file"')
+            if handle then
+                local result = handle:read("*a"):gsub("%s+", "")
+                handle:close()
+                is_directory = (result == "directory")
+            end
 
-                local ok, err = self.engine:load_file(music_path)
-                if ok then
-                    print("Loaded music file:", music_path)
-                    loaded = true
-                else
-
-                    ok, err = self.engine:load_directory(music_path)
-                    if ok then
-                        print("Loaded music directory:", music_path)
-                        loaded = true
-                    else
-                        print("Failed to load music path:", music_path, "Error:", err)
-                    end
-                end
-            else
-
+            if is_directory then
+                print("Path is a directory, loading as directory:", music_path)
                 local ok, err = self.engine:load_directory(music_path)
                 if ok then
                     print("Loaded music directory:", music_path)
                     loaded = true
                 else
-                    print("Failed to load music path:", music_path, "Error:", err)
+                    print("Failed to load music directory:", music_path, "Error:", err)
+                end
+            else
+                print("Path is a file, loading as file:", music_path)
+                local ok, err = self.engine:load_file(music_path)
+                if ok then
+                    print("Loaded music file:", music_path)
+                    loaded = true
+                else
+                    print("Failed to load music file:", music_path, "Error:", err)
                 end
             end
         end
