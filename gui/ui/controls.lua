@@ -568,16 +568,41 @@ function Controls:_handleProgressBarClick(x, y)
         return
     end
 
+    local status = self.game_state.engine:get_status()
+    if not status or not status.current_file or status.total_time <= 0 then
+        return
+    end
+
     local relative_x = x - self.progress_bar.x
     local seek_position = math.max(0.0, math.min(1.0, relative_x / self.progress_bar.width))
 
+    if status.total_time > 0 then
+        local safety_margin = math.max(3.0, status.total_time * 0.05) -- 5% or 3 seconds, whichever is larger
+        local max_seek_position = math.max(0.0, (status.total_time - safety_margin) / status.total_time)
+        
+        if seek_position > max_seek_position then
+            seek_position = max_seek_position
+            print(string.format("Limiting seek to %.1f%% (%.1fs from end) to avoid MPEG decode errors", 
+                  seek_position * 100, safety_margin))
+        end
+        
+        if status.progress > 0.95 and seek_position > status.progress then
+            print("Blocking seek - already near end of track to prevent decode errors")
+            return
+        end
+    end
+
+    self.game_state.app_state.user_seeking = true
+    self.game_state.app_state.last_seek_time = love.timer.getTime()
+
     local ok, err = self.game_state.engine:seek(seek_position)
     if ok then
-
-        self.game_state.app_state.user_seeking = true
-        self.game_state.app_state.last_seek_time = love.timer.getTime()
+        print(string.format("Seeking to %.1f%%", seek_position * 100))
     else
         print("Seek failed:", err)
+        if self.game_state._triggerVisualFeedback then
+            self.game_state:_triggerVisualFeedback("error")
+        end
     end
 end
 

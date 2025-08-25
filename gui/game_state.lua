@@ -160,6 +160,8 @@ function GameState:update(dt)
 
     self.floating_animation.time = self.floating_animation.time + dt
 
+    self:_updateEngineStatus(dt)
+
     local audio_energy = 0
     local bass_energy = 0
     local mid_energy = 0
@@ -327,120 +329,9 @@ function GameState:update(dt)
     self.floating_animation.high_energy = high_energy
     self.floating_animation.is_playing = is_playing
 
-    if self.engine and self.engine:is_valid() then
-        self.engine:update()
-        local status = self.engine:get_status()
+    self:_updateGUIComponents(dt)
 
-        if status then
-            local previous_state = self.app_state.previous_state
-            local current_state = status.state
-
-            self.last_status = status
-            self.app_state.current_song = status.current_file or "No song loaded"
-            self.app_state.current_time = status.current_time
-            self.app_state.total_time = status.total_time
-            self.app_state.progress = status.progress
-            self.app_state.current_track = status.current_track
-            self.app_state.total_tracks = status.total_tracks
-            self.app_state.volume = status.volume
-
-            if previous_state ~= current_state then
-                print(string.format("State change: %s -> %s (track %d/%d, progress %.2f)", 
-                      previous_state, current_state, status.current_track, status.total_tracks, status.progress))
-
-                if current_state == "playing" then
-                    self.app_state.just_auto_advanced = false
-                end
-            end
-
-            if self.app_state.just_auto_advanced and previous_state == "playing" and current_state == "stopped" and 
-               status.progress < 0.1 and status.current_track < status.total_tracks then
-                print("Track failed to play after auto-advance, trying next track...")
-                self.app_state.just_auto_advanced = false
-
-                local ok, err = self.engine:next_track()
-                if ok then
-                    love.timer.sleep(0.1)
-                    local play_ok, play_err = self.engine:play()
-                    if play_ok then
-                        print("Successfully skipped to next working track")
-                    else
-                        print("Failed to play next track:", play_err)
-                    end
-                else
-                    print("Failed to skip to next track:", err)
-                end
-            end
-
-            if previous_state == "playing" and current_state == "stopped" and 
-               status.total_tracks >= 1 and status.progress >= 0.99 and 
-               not self.app_state.user_seeking and
-               (status.current_time >= status.total_time - 2) then
-
-                local next_track = self:getNextTrack()
-
-                if next_track then
-                    print(string.format("Song ended (%.1f%% complete), auto-advancing with mode: shuffle=%s, repeat=%s", 
-                          status.progress * 100, 
-                          self.app_state.shuffle_enabled and "on" or "off",
-                          self.app_state.repeat_mode))
-
-                    love.timer.sleep(0.1)
-
-                    local ok, err = self:_navigateToTrack(next_track)
-                    if ok then
-
-                        love.timer.sleep(0.1)
-
-                        local play_ok, play_err = self.engine:play()
-                        if play_ok then
-                            print("Auto-advance successful, playing track", next_track)
-
-                            self.app_state.just_auto_advanced = true
-                        else
-                            print("Auto-advance failed to start playback:", play_err)
-                        end
-                    else
-                        print("Auto-advance failed to navigate to track:", err)
-                    end
-                else
-
-                    print("End of playlist reached, no repeat enabled")
-                end
-            elseif previous_state == "playing" and current_state == "stopped" and status.progress < 0.95 then
-
-                print(string.format("Song stopped unexpectedly at %.1f%% - this might be a seeking issue", status.progress * 100))
-            end
-
-            if status.state == "playing" then
-                self.app_state.is_playing = true
-                self.app_state.is_paused = false
-            elseif status.state == "paused" then
-                self.app_state.is_playing = false
-                self.app_state.is_paused = true
-            else 
-                self.app_state.is_playing = false
-                self.app_state.is_paused = false
-            end
-
-            self.app_state.previous_state = current_state
-
-            if self.app_state.user_seeking and 
-               love.timer.getTime() - self.app_state.last_seek_time > 2.0 then
-                self.app_state.user_seeking = false
-            end
-        end
-    end
-
-    if self.player_component then
-        self.player_component:update(dt)
-    end
-    if self.controls_component then
-        self.controls_component:update(dt)
-    end
-    if self.visualizer_component then
-        self.visualizer_component:update(dt)
-    end
+    self:_ensureResponsiveness(dt)
 end
 
 function GameState:draw()
@@ -450,6 +341,8 @@ function GameState:draw()
     love.graphics.setColor(self.theme.text_primary)
 
     self:drawMainContent()
+
+    self:_drawVisualFeedback()
 end
 
 function GameState:_initGalacticJourney()
@@ -1210,15 +1103,30 @@ function GameState:_handleProgressRingClick(x, y)
     progress = math.max(0.0, math.min(1.0, progress))
 
     if status.total_time > 0 then
-        local max_seek_position = math.max(0.0, (status.total_time - 2.0) / status.total_time)
+
+        local safety_margin = math.max(3.0, status.total_time * 0.05) 
+        local max_seek_position = math.max(0.0, (status.total_time - safety_margin) / status.total_time)
+
         if progress > max_seek_position then
             progress = max_seek_position
+            print(string.format("Limiting seek to %.1f%% (%.1fs from end) to avoid MPEG decode errors", 
+                  progress * 100, safety_margin))
+        end
+
+        if status.progress > 0.95 and progress > status.progress then
+            print("Blocking seek - already near end of track to prevent decode errors")
+            return
         end
     end
+
+    self.app_state.user_seeking = true
+    self.app_state.last_seek_time = love.timer.getTime()
 
     local ok, err = self.engine:seek(progress)
     if not ok then
         print("Failed to seek:", err)
+
+        self:_triggerVisualFeedback("error")
     else
         print(string.format("Seeking to %.1f%%", progress * 100))
     end
@@ -1545,6 +1453,285 @@ function GameState:cleanup()
         print("Engine bridge cleaned up")
     end
     print("GameState cleanup")
+end
+
+function GameState:_updateEngineStatus(dt)
+    if not self.engine or not self.engine:is_valid() then
+
+        self.last_status = {
+            current_file = nil,
+            current_track = 0,
+            total_tracks = 0,
+            progress = 0.0,
+            current_time = 0,
+            total_time = 0,
+            state = "stopped",
+            volume = 0.8,
+            vis_bands = {}
+        }
+        return
+    end
+
+    self.engine:update()
+    local status = self.engine:get_status()
+
+    if not status then
+        return
+    end
+
+    local previous_state = self.app_state.previous_state
+    local current_state = status.state
+
+    self.last_status = status
+    self.app_state.current_song = status.current_file or "No song loaded"
+    self.app_state.current_time = status.current_time
+    self.app_state.total_time = status.total_time
+    self.app_state.progress = status.progress
+    self.app_state.current_track = status.current_track
+    self.app_state.total_tracks = status.total_tracks
+    self.app_state.volume = status.volume
+
+    self:_handleStateChanges(previous_state, current_state, status)
+
+    if status.state == "playing" then
+        self.app_state.is_playing = true
+        self.app_state.is_paused = false
+    elseif status.state == "paused" then
+        self.app_state.is_playing = false
+        self.app_state.is_paused = true
+    else 
+        self.app_state.is_playing = false
+        self.app_state.is_paused = false
+    end
+
+    self.app_state.previous_state = current_state
+
+    if self.app_state.user_seeking and 
+       love.timer.getTime() - self.app_state.last_seek_time > 2.0 then
+        self.app_state.user_seeking = false
+    end
+end
+
+function GameState:_handleStateChanges(previous_state, current_state, status)
+    if previous_state ~= current_state then
+        print(string.format("State change: %s -> %s (track %d/%d, progress %.2f)", 
+              previous_state, current_state, status.current_track, status.total_tracks, status.progress))
+
+        if current_state == "playing" then
+            self.app_state.just_auto_advanced = false
+
+            self:_triggerVisualFeedback("play")
+        elseif current_state == "paused" then
+
+            self:_triggerVisualFeedback("pause")
+        elseif current_state == "stopped" then
+
+            self:_triggerVisualFeedback("stop")
+        end
+    end
+
+    if self.app_state.just_auto_advanced and previous_state == "playing" and current_state == "stopped" and 
+       status.progress < 0.1 and status.current_track < status.total_tracks then
+        print("Track failed to play after auto-advance, trying next track...")
+        self.app_state.just_auto_advanced = false
+
+        local ok, err = self.engine:next_track()
+        if ok then
+            love.timer.sleep(0.1)
+            local play_ok, play_err = self.engine:play()
+            if play_ok then
+                print("Successfully skipped to next working track")
+                self:_triggerVisualFeedback("skip")
+            else
+                print("Failed to play next track:", play_err)
+                self:_triggerVisualFeedback("error")
+            end
+        else
+            print("Failed to skip to next track:", err)
+            self:_triggerVisualFeedback("error")
+        end
+    end
+
+    if previous_state == "playing" and current_state == "stopped" and 
+       status.total_tracks >= 1 and status.progress >= 0.99 and 
+       not self.app_state.user_seeking and
+       (status.current_time >= status.total_time - 2) then
+
+        local next_track = self:getNextTrack()
+
+        if next_track then
+            print(string.format("Song ended (%.1f%% complete), auto-advancing with mode: shuffle=%s, repeat=%s", 
+                  status.progress * 100, 
+                  self.app_state.shuffle_enabled and "on" or "off",
+                  self.app_state.repeat_mode))
+
+            love.timer.sleep(0.1)
+
+            local ok, err = self:_navigateToTrack(next_track)
+            if ok then
+                love.timer.sleep(0.1)
+
+                local play_ok, play_err = self.engine:play()
+                if play_ok then
+                    print("Auto-advance successful, playing track", next_track)
+                    self.app_state.just_auto_advanced = true
+                    self:_triggerVisualFeedback("next")
+                else
+                    print("Auto-advance failed to start playback:", play_err)
+                    self:_triggerVisualFeedback("error")
+                end
+            else
+                print("Auto-advance failed to navigate to track:", err)
+                self:_triggerVisualFeedback("error")
+            end
+        else
+            print("End of playlist reached, no repeat enabled")
+            self:_triggerVisualFeedback("end")
+        end
+    elseif previous_state == "playing" and current_state == "stopped" and status.progress < 0.95 then
+
+        if status.progress > 0.90 then
+            print(string.format("Song stopped at %.1f%% - likely MPEG decode error near end, advancing to next track", status.progress * 100))
+
+            local next_track = self:getNextTrack()
+            if next_track then
+                local ok, err = self:_navigateToTrack(next_track)
+                if ok then
+                    self.engine:play()
+                    self:_triggerVisualFeedback("next")
+                end
+            end
+        else
+            print(string.format("Song stopped unexpectedly at %.1f%% - this might be a seeking issue", status.progress * 100))
+            self:_triggerVisualFeedback("error")
+        end
+    end
+end
+
+function GameState:_updateGUIComponents(dt)
+
+    if self.visualizer_component then
+        self.visualizer_component:update(dt)
+    end
+
+    if self.player_component then
+        self.player_component:update(dt)
+    end
+
+    if self.controls_component then
+        self.controls_component:update(dt)
+    end
+end
+
+function GameState:_triggerVisualFeedback(feedback_type)
+
+    if not self.visual_feedback then
+        self.visual_feedback = {
+            current_feedback = nil,
+            feedback_time = 0,
+            feedback_duration = 1.0,
+            feedback_intensity = 0
+        }
+    end
+
+    local feedback_config = {
+        play = { color = {0.2, 0.8, 0.2, 1.0}, intensity = 0.8, duration = 0.5 },
+        pause = { color = {0.8, 0.6, 0.2, 1.0}, intensity = 0.6, duration = 0.3 },
+        stop = { color = {0.8, 0.2, 0.2, 1.0}, intensity = 0.7, duration = 0.4 },
+        next = { color = {0.2, 0.6, 0.8, 1.0}, intensity = 0.5, duration = 0.3 },
+        skip = { color = {0.6, 0.2, 0.8, 1.0}, intensity = 0.6, duration = 0.4 },
+        error = { color = {0.9, 0.1, 0.1, 1.0}, intensity = 0.9, duration = 0.8 },
+        ["end"] = { color = {0.5, 0.5, 0.5, 1.0}, intensity = 0.4, duration = 0.6 }
+    }
+
+    local config = feedback_config[feedback_type] or feedback_config.play
+
+    self.visual_feedback.current_feedback = feedback_type
+    self.visual_feedback.feedback_time = love.timer.getTime()
+    self.visual_feedback.feedback_duration = config.duration
+    self.visual_feedback.feedback_intensity = config.intensity
+    self.visual_feedback.feedback_color = config.color
+
+    print("Visual feedback triggered:", feedback_type)
+end
+
+function GameState:_ensureResponsiveness(dt)
+
+    local current_time = love.timer.getTime()
+    if not self.performance_monitor then
+        self.performance_monitor = {
+            last_frame_time = current_time,
+            frame_times = {},
+            max_frame_time = 1.0 / 30.0, 
+            warning_threshold = 1.0 / 20.0 
+        }
+    end
+
+    local frame_time = current_time - self.performance_monitor.last_frame_time
+    self.performance_monitor.last_frame_time = current_time
+
+    table.insert(self.performance_monitor.frame_times, frame_time)
+    if #self.performance_monitor.frame_times > 60 then
+        table.remove(self.performance_monitor.frame_times, 1)
+    end
+
+    local total_time = 0
+    for _, time in ipairs(self.performance_monitor.frame_times) do
+        total_time = total_time + time
+    end
+    local avg_frame_time = total_time / #self.performance_monitor.frame_times
+
+    if avg_frame_time > self.performance_monitor.warning_threshold then
+        print(string.format("Performance warning: Average frame time %.3fs (%.1f FPS)", 
+              avg_frame_time, 1.0 / avg_frame_time))
+    end
+
+    return avg_frame_time <= self.performance_monitor.max_frame_time
+end
+
+function GameState:_drawVisualFeedback()
+    if not self.visual_feedback or not self.visual_feedback.current_feedback then
+        return
+    end
+
+    local current_time = love.timer.getTime()
+    local elapsed = current_time - self.visual_feedback.feedback_time
+
+    if elapsed > self.visual_feedback.feedback_duration then
+        self.visual_feedback.current_feedback = nil
+        return
+    end
+
+    local progress = elapsed / self.visual_feedback.feedback_duration
+    local alpha = (1.0 - progress) * self.visual_feedback.feedback_intensity
+
+    if alpha <= 0 then
+        return
+    end
+
+    local color = self.visual_feedback.feedback_color
+    love.graphics.setColor(color[1], color[2], color[3], alpha * 0.3)
+
+    local border_width = 4
+    love.graphics.rectangle("fill", 0, 0, self.window_width, border_width) 
+    love.graphics.rectangle("fill", 0, self.window_height - border_width, self.window_width, border_width) 
+    love.graphics.rectangle("fill", 0, 0, border_width, self.window_height) 
+    love.graphics.rectangle("fill", self.window_width - border_width, 0, border_width, self.window_height) 
+
+    if self.visual_feedback.current_feedback == "play" or 
+       self.visual_feedback.current_feedback == "error" or
+       self.visual_feedback.current_feedback == "next" then
+
+        local center_x = self.window_width / 2
+        local center_y = self.window_height / 2
+        local pulse_radius = 50 + (1.0 - progress) * 30
+
+        love.graphics.setColor(color[1], color[2], color[3], alpha * 0.2)
+        love.graphics.circle("fill", center_x, center_y, pulse_radius)
+
+        love.graphics.setColor(color[1], color[2], color[3], alpha * 0.5)
+        love.graphics.circle("line", center_x, center_y, pulse_radius)
+    end
 end
 
 return GameState

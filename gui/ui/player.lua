@@ -234,10 +234,18 @@ function Player:_performSeek(seek_position)
     end
 
     if status.total_time > 0 then
-        local max_seek_position = math.max(0.0, (status.total_time - 2.0) / status.total_time)
+        local safety_margin = math.max(3.0, status.total_time * 0.05) 
+        local max_seek_position = math.max(0.0, (status.total_time - safety_margin) / status.total_time)
+        
         if seek_position > max_seek_position then
             seek_position = max_seek_position
-            print(string.format("Limiting seek to %.1f%% to avoid end-of-track issues", seek_position * 100))
+            print(string.format("Limiting seek to %.1f%% (%.1fs from end) to avoid MPEG decode errors", 
+                  seek_position * 100, safety_margin))
+        end
+        
+        if status.progress > 0.95 and seek_position > status.progress then
+            print("Blocking seek - already near end of track to prevent decode errors")
+            return
         end
     end
 
