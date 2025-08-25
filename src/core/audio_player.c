@@ -61,19 +61,14 @@ static int pa_callback(const void *inputBuffer, void *outputBuffer,
         } else if (err != MPG123_OK) {
             consecutive_errors++;
 
-            if (err == MPG123_ERR_READER || err == MPG123_NEED_MORE) {
-
+            if (err == MPG123_NEED_MORE) {
+                // Need more input data, fill with silence and continue
                 memset(in_buffer + samples_read, 0, (in_total - samples_read) * sizeof(float));
                 samples_read = in_total;
                 break;
             } else if (err == MPG123_NEW_FORMAT) {
-
+                // Format changed, continue processing
                 continue;
-            } else if (err == MPG123_ERR_16TO8TABLE || err == MPG123_ERR_BAD_OUTFORMAT) {
-
-                memset(in_buffer + samples_read, 0, (in_total - samples_read) * sizeof(float));
-                samples_read = in_total;
-                break;
             } else {
 
                 off_t current_pos = mpg123_tell(player->mh);
