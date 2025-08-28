@@ -1,7 +1,7 @@
 #include "core/audio_player.h"
 
 #define BUFFER_SIZE 16384
-#define DEFAULT_VOLUME 2.0f 
+#define DEFAULT_VOLUME 1.0f 
 
 static int pa_callback(const void *inputBuffer, void *outputBuffer,
                       unsigned long framesPerBuffer,

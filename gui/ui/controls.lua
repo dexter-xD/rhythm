@@ -373,7 +373,7 @@ end
 
 function Controls:_drawVolumePopup(x, y)
     local status = self.game_state.last_status
-    local volume = status and status.volume or 0.8
+    local volume = status and status.volume or 1.0
 
     local popup_width = 30
     local popup_height = 120
@@ -870,7 +870,7 @@ function Controls:_toggleMute()
     end
 
     local status = self.game_state.engine:get_status()
-    local new_volume = status.volume > 0.0 and 0.0 or 0.8 
+    local new_volume = status.volume > 0.0 and 0.0 or 1.0 
     local ok, err = self.game_state.engine:set_volume(new_volume)
     if ok then
         print(new_volume > 0.0 and "Unmuted" or "Muted")

@@ -68,7 +68,7 @@ GameState.app_state = {
     current_screen = "player", 
     is_playing = false,
     is_paused = false,
-    volume = 0.8,
+    volume = 1.0,
     current_song = "No song loaded",
     current_time = 0,
     total_time = 0,
@@ -1513,7 +1513,7 @@ function GameState:_updateEngineStatus(dt)
             current_time = 0,
             total_time = 0,
             state = "stopped",
-            volume = 0.8,
+            volume = 1.0,
             vis_bands = {}
         }
         return
