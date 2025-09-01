@@ -65,7 +65,7 @@ We provide ready-to-install Debian packages for Ubuntu, Debian, and other Debian
 
 #### Installation Steps
 
-1. **Download the package** that matches your preference from the [Releases](https://github.com/your-username/rhythm/releases) page
+1. **Download the package** that matches your preference from the [Releases]([https://github.com/your-username/rhythm/release](https://github.com/dexter-xD/rhythm/releases/tag/v2.0.0)s) page
 
 2. **Install the package:**
    ```bash
