@@ -65,7 +65,7 @@ We provide ready-to-install Debian packages for Ubuntu, Debian, and other Debian
 
 #### Installation Steps
 
-1. **Download the package** that matches your preference from the [Releases]([https://github.com/ dexter-xD/rhythm/release](https://github.com/dexter-xD/rhythm/releases/tag/v2.0.0)s) page
+1. **Download the package** that matches your preference from the [Releases]([https://github.com/dexter-xD/rhythm/release](https://github.com/dexter-xD/rhythm/releases/tag/v2.0.0)s) page
 
 2. **Install the package:**
    ```bash
@@ -194,7 +194,7 @@ sudo mv love-11.4-x86_64.AppImage /usr/local/bin/love
 
 ```bash
 # Clone the repository
-git clone https://github.com/ dexter-xD/rhythm.git
+git clone https://github.com/dexter-xD/rhythm.git
 cd rhythm
 
 # Build the project
@@ -393,10 +393,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/ dexter-xD/rhythm/issues)
-- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/ dexter-xD/rhythm/discussions)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/dexter-xD/rhythm/issues)
+- 💡 **Feature Requests**: [GitHub Discussions](https://github.com/dexter-xD/rhythm/discussions)
 - 💬 **Community Chat**: [Discord Server](https://discord.gg/P48cY9zFal)
-- 📧 **Contact**: [GitHub Profile](https://github.com/ dexter-xD)
+- 📧 **Contact**: [GitHub Profile](https://github.com/dexter-xD)
 
 ---
 
